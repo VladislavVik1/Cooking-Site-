@@ -98,12 +98,12 @@ include __DIR__ . '/../partials/head.php';
         <a href="#recipes" class="hero-btn">Начать готовить</a>
     </div>
     <div class="hero-image">
-        <div class="floating-image">
-            <img src="/public/images/dish1.jpg" alt="Блюдо 1">
-            <img src="/public/images/dish2.jpg" alt="Блюдо 2">
-            <img src=/public/images/dish3.jpg" alt="Блюдо 3">
-            <img src="/public/images/dish4.jpg" alt="Блюдо 4">
-        </div>
+    <div class="floating-image">
+  <img src="<?= asset('images/dish1.jpg') ?>" alt="Блюдо 1">
+  <img src="<?= asset('images/dish2.jpg') ?>" alt="Блюдо 2">
+  <img src="<?= asset('images/dish3.jpg') ?>" alt="Блюдо 3">
+  <img src="<?= asset('images/dish4.jpg') ?>" alt="Блюдо 4">
+</div>
     </div>
 </section>
 
@@ -139,7 +139,9 @@ include __DIR__ . '/../partials/head.php';
         <?php foreach ($recipes as $recipe): ?>
           <div class="recipe-card">
             <div class="recipe-image">
-              <img src="/public/images/<?= safe($recipe['image_path']) ?>" alt="<?= safe($recipe['title']) ?>">
+              <!-- карточка рецепта -->
+<img src="<?= asset('images/' . safe($recipe['image_path'])) ?>" alt="<?= safe($recipe['title']) ?>">
+
               <div class="recipe-category"><?= safe($recipe['category_name'] ?? 'Без категории') ?></div>
               <div class="recipe-difficulty"><?= safe($recipe['difficulty']) ?></div>
             </div>
@@ -209,7 +211,9 @@ include __DIR__ . '/../partials/head.php';
           <div class="stat"><span class="stat-number">1000+</span><span class="stat-label">Пользователей</span></div>
         </div>
       </div>
-      <div class="about-image"><img src="/public/images/logotip.jpg" alt="О нас"></div>
+      <div class="about-image">
+<img src="<?= asset('images/logotip.jpg') ?>" alt="О нас">
+</div>
     </div>
   </div>
 </section>

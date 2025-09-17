@@ -2,6 +2,9 @@
 
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 
+/**
+ * ---------- DB CONNECTION ----------
+ */
 $dsn  = '';
 $user = '';
 $pass = '';
@@ -48,6 +51,9 @@ try {
     exit('Ошибка подключения к базе данных.');
 }
 
+/**
+ * ---------- HELPERS ----------
+ */
 if (!function_exists('safe')) {
     function safe($value) {
         return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -55,33 +61,83 @@ if (!function_exists('safe')) {
 }
 function h(string $v): string { return safe($v); }
 
-$uploadsDir = getenv('UPLOADS_DIR');
-if (!$uploadsDir) {
-    $uploadsDir = getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/images');
+/**
+ * База для ассетов в URL. Если веб-рутом является корень проекта, нужен префикс /public,
+ * если веб-рутом является сама папка public — префикс не нужен.
+ */
+$projectRoot = realpath(__DIR__);
+$docroot     = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+$needsPublic = ($projectRoot && $docroot && $docroot === $projectRoot);
+define('PUBLIC_BASE', $needsPublic ? '/public' : '');
+
+function asset(string $rel): string {
+    return PUBLIC_BASE . '/' . ltrim($rel, '/');
 }
-define('UPLOAD_DIR', rtrim($uploadsDir, '/\\') . '/');
-define('PUBLIC_UPLOAD_PATH', '/images/');
+
+
+$uploadsFs = getenv('UPLOADS_DIR')
+    ?: (getenv('RENDER') ? '/var/data/uploads' : (__DIR__ . '/public/uploads'));
+
+if (!is_dir($uploadsFs)) { @mkdir($uploadsFs, 0775, true); }
+
+if (getenv('RENDER')) {
+    $link = __DIR__ . '/public/uploads';
+    if (!is_dir($link) && !is_link($link)) {
+        @mkdir(dirname($link), 0775, true);
+        @symlink('/var/data/uploads', $link);
+    }
+}
+define('UPLOAD_DIR', rtrim($uploadsFs, '/\\') . '/');
+define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/uploads', '/') . '/');
+
 
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 $allowed_types = ['image/jpeg','image/png','image/gif','image/webp'];
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
 
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (Throwable $e) {
-    error_log('DB connect error: '.$e->getMessage());
-    http_response_code(500);
-    exit('Ошибка подключения к базе данных.');
+
+function getYouTubeId(string $url): string {
+    $id = '';
+    $parts = parse_url($url);
+    if (!$parts || !isset($parts['host'])) return $id;
+
+    if (str_contains($parts['host'], 'youtu.be')) {
+        $id = ltrim($parts['path'] ?? '', '/');
+    } elseif (str_contains($parts['host'], 'youtube.com')) {
+        parse_str($parts['query'] ?? '', $q);
+        $id = $q['v'] ?? '';
+        if (!$id && isset($parts['path']) && preg_match('~^/embed/([A-Za-z0-9_-]{11})~', $parts['path'], $m)) {
+            $id = $m[1];
+        }
+    }
+    return (is_string($id) && preg_match('~^[A-Za-z0-9_-]{11}$~', $id)) ? $id : '';
 }
 
-if (!function_exists('safe')) {
-    function safe($value) {
-        return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+function http_json_get(string $url, array $headers = [], int $timeout = 15): ?array {
+    if (!extension_loaded('curl')) return null;
+    $u = parse_url($url);
+    if (!$u || !in_array(($u['scheme'] ?? ''), ['http','https'], true)) return null;
+
+    $ch = curl_init($url);
+    $headers = array_merge(['Accept: application/json','User-Agent: CookingSiteBot/1.0'], $headers);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+    ]);
+    $resp = curl_exec($ch);
+    if ($resp === false) { curl_close($ch); return null; }
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code >= 200 && $code < 300) {
+        $data = json_decode($resp, true);
+        return (json_last_error() === JSON_ERROR_NONE) ? $data : null;
     }
+    return null;
 }
 
 function uploadImage(array $file): array {
@@ -122,51 +178,6 @@ function uploadImage(array $file): array {
     @chmod($target, 0644);
 
     return ['success' => true, 'filename' => $newName, 'publicPath' => PUBLIC_UPLOAD_PATH . $newName];
-}
-
-function getYouTubeId(string $url): string {
-    $id = '';
-    $parts = parse_url($url);
-    if (!$parts || !isset($parts['host'])) return $id;
-
-    if (str_contains($parts['host'], 'youtu.be')) {
-        $id = ltrim($parts['path'] ?? '', '/');
-    } elseif (str_contains($parts['host'], 'youtube.com')) {
-        parse_str($parts['query'] ?? '', $q);
-        $id = $q['v'] ?? '';
-        if (!$id && isset($parts['path']) && preg_match('~^/embed/([A-Za-z0-9_-]{11})~', $parts['path'], $m)) {
-            $id = $m[1];
-        }
-    }
-    return (is_string($id) && preg_match('~^[A-Za-z0-9_-]{11}$~', $id)) ? $id : '';
-}
-
-function http_json_get(string $url, array $headers = [], int $timeout = 15): ?array {
-    if (!extension_loaded('curl')) return null; 
-    $u = parse_url($url);
-    if (!$u || !in_array(($u['scheme'] ?? ''), ['http','https'], true)) return null;
-
-    $ch = curl_init($url);
-    $headers = array_merge(['Accept: application/json','User-Agent: CookingSiteBot/1.0'], $headers);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => $timeout,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS      => 3,
-        CURLOPT_HTTPHEADER     => $headers,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-    ]);
-    $resp = curl_exec($ch);
-    if ($resp === false) { curl_close($ch); return null; }
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($code >= 200 && $code < 300) {
-        $data = json_decode($resp, true);
-        return (json_last_error() === JSON_ERROR_NONE) ? $data : null;
-    }
-    return null;
 }
 
 function http_download_image(string $url, string $targetDir = UPLOAD_DIR, string $prefix = 'stock_'): array {
