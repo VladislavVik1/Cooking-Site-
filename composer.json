@@ -1,0 +1,6 @@
+docker compose up -d --build
+docker compose exec php php -v            
+docker compose exec php bash -lc "php -r 'echo 1;'" 
+
+docker compose exec php bash -lc "composer -V || (php -r \"copy('https://getcomposer.org/installer','composer-setup.php');\" && php composer-setup.php && php composer.phar -V)"
+docker compose exec php bash -lc "php composer.phar install --no-interaction"
