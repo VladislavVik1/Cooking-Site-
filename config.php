@@ -71,12 +71,8 @@ function asset(string $rel): string {
     return PUBLIC_BASE . '/' . ltrim($rel, '/');
 }
 
-/* ------------------ UPLOADS (persist) ------------------
- * Статика лежит в public/images (из репозитория) — её НЕ трогаем и не линкуем.
- * Загрузки пользователей храним в /var/data/uploads (Render) и линкуем на public/uploads.
- */
 $uploadsFs = getenv('UPLOADS_DIR')
-    ?: (getenv('RENDER') ? '/var/data/uploads' : (__DIR__ . '/public/uploads'));
+    ?: (getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/uploads'));
 
 if (!is_dir($uploadsFs)) { @mkdir($uploadsFs, 0775, true); }
 
@@ -84,9 +80,10 @@ if (getenv('RENDER')) {
     $link = __DIR__ . '/public/uploads';
     if (!is_dir($link) && !is_link($link)) {
         @mkdir(dirname($link), 0775, true);
-        @symlink('/var/data/uploads', $link);
+        @symlink('/data/uploads', $link);
     }
 }
+
 define('UPLOAD_DIR', rtrim($uploadsFs, '/\\') . '/');
 define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/uploads', '/') . '/');
 
