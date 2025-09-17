@@ -5,15 +5,17 @@ server {
   root /app/public;
   index index.php index.html;
 
-  location /images/ {
+
+  location / {
+    try_files $uri $uri/ /index.php?$query_string;
+  }
+
+
+  location /uploads/ {
     alias /data/uploads/;
     access_log off;
     expires 30d;
     add_header Cache-Control "public";
-  }
-
-  location / {
-    try_files $uri $uri/ /index.php?$query_string;
   }
 
   location ~ \.php$ {
