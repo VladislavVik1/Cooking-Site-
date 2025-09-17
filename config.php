@@ -1,28 +1,35 @@
 <?php declare(strict_types=1);
 
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
-$dsn  = getenv('DB_DSN') ?: '';
-$user = getenv('DB_USER') ?: '';
-$pass = getenv('DB_PASS') ?: '';
 
-if (!$dsn && getenv('DATABASE_URL')) {
-    $p = parse_url(getenv('DATABASE_URL'));
-    if ($p && ($p['scheme'] ?? null) === 'postgres') {
+$dsn  = '';
+$user = '';
+$pass = '';
+
+if ($url = getenv('DATABASE_URL')) {
+    $p = parse_url($url);
+    if ($p && ($p['scheme'] ?? '') === 'postgres') {
         $host = $p['host'] ?? 'localhost';
         $port = (int)($p['port'] ?? 5432);
         $db   = ltrim($p['path'] ?? '', '/');
-        $user = urldecode($p['user'] ?? $user);
-        $pass = urldecode($p['pass'] ?? $pass);
+        $user = urldecode($p['user'] ?? '');
+        $pass = urldecode($p['pass'] ?? '');
         $dsn  = "pgsql:host={$host};port={$port};dbname={$db};sslmode=require";
     }
+}
+
+if (!$dsn && getenv('RENDER')) {
+    error_log('DATABASE_URL is not set; refusing to fallback to "db" on Render');
+    http_response_code(500);
+    exit('DB is misconfigured (no DATABASE_URL).');
 }
 
 if (!$dsn) {
     $host = getenv('DB_HOST') ?: 'db';
     $port = getenv('DB_PORT') ?: '5432';
     $name = getenv('DB_NAME') ?: 'cooking_site';
-    $user = $user ?: (getenv('DB_USER') ?: 'Admin');
-    $pass = $pass ?: (getenv('DB_PASS') ?: '12345ttt');
+    $user = getenv('DB_USER') ?: 'Admin';
+    $pass = getenv('DB_PASS') ?: '12345ttt';
     $dsn  = "pgsql:host={$host};port={$port};dbname={$name}";
 }
 
@@ -46,8 +53,10 @@ if (!function_exists('safe')) {
     }
 }
 function h(string $v): string { return safe($v); }
+
 $uploadsDir = getenv('UPLOADS_DIR');
 if (!$uploadsDir) {
+
     $uploadsDir = getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/images');
 }
 define('UPLOAD_DIR', rtrim($uploadsDir, '/\\') . '/');
@@ -55,7 +64,6 @@ define('PUBLIC_UPLOAD_PATH', '/images/');
 
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 $allowed_types = ['image/jpeg','image/png','image/gif','image/webp'];
-
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
