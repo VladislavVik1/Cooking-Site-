@@ -114,10 +114,10 @@ include __DIR__ . '/../partials/head.php';
   </div>
   <div class="hero-image">
     <div class="floating-image">
-      <img src="<?= asset('images/dish1.jpg') ?>" alt="Блюдо 1">
-      <img src="<?= asset('images/dish2.jpg') ?>" alt="Блюдо 2">
-      <img src="<?= asset('images/dish3.jpg') ?>" alt="Блюдо 3">
-      <img src="<?= asset('images/dish4.jpg') ?>" alt="Блюдо 4">
+      <img src="<?= asset('/images/dish1.jpg') ?>" alt="Блюдо 1">
+      <img src="<?= asset('/public/images/dish2.jpg') ?>" alt="Блюдо 2">
+      <img src="<?= asset('/public/images/dish3.jpg') ?>" alt="Блюдо 3">
+      <img src="<?= asset('/public/images/dish4.jpg') ?>" alt="Блюдо 4">
     </div>
   </div>
 </section>
