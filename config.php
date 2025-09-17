@@ -8,7 +8,8 @@ $pass = '';
 
 if ($url = getenv('DATABASE_URL')) {
     $p = parse_url($url);
-    if ($p && ($p['scheme'] ?? '') === 'postgres') {
+    $scheme = $p['scheme'] ?? '';
+    if ($p && ($scheme === 'postgres' || $scheme === 'postgresql')) {
         $host = $p['host'] ?? 'localhost';
         $port = (int)($p['port'] ?? 5432);
         $db   = ltrim($p['path'] ?? '', '/');
@@ -18,10 +19,10 @@ if ($url = getenv('DATABASE_URL')) {
     }
 }
 
-if (!$dsn && getenv('RENDER')) {
-    error_log('DATABASE_URL is not set; refusing to fallback to "db" on Render');
+if (getenv('RENDER') && !$dsn) {
+    error_log('DATABASE_URL missing or invalid; refusing to fallback to "db" on Render');
     http_response_code(500);
-    exit('DB is misconfigured (no DATABASE_URL).');
+    exit('DB is misconfigured (DATABASE_URL).');
 }
 
 if (!$dsn) {
@@ -56,7 +57,6 @@ function h(string $v): string { return safe($v); }
 
 $uploadsDir = getenv('UPLOADS_DIR');
 if (!$uploadsDir) {
-
     $uploadsDir = getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/images');
 }
 define('UPLOAD_DIR', rtrim($uploadsDir, '/\\') . '/');
