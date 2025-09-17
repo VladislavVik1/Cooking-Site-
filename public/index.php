@@ -10,19 +10,32 @@ if (PHP_SAPI === 'cli-server') {
 
 require_once __DIR__ . '/../config.php';
 
-function recipe_img_src($name): string {
-    $name = trim((string)$name);
-    if ($name === '') return asset('images/logotip.jpg');           
-    if (preg_match('~^https?://~i', $name)) return $name;           
-    $base = basename($name);
+function recipe_img_src(string $name, bool $usePlaceholder = false ): string {
+  $name = trim($name);
+  if ($name === '') {
+      return $usePlaceholder ? asset('images/logotip.jpg') : '';
+  }
+  if (preg_match('~^https?://~i', $name)) {
+      return $name; 
+  }
 
-    $upFs = __DIR__ . '/uploads/' . $base;
-    if (is_file($upFs)) return asset('uploads/' . rawurlencode($base));
+  $base = basename($name);
 
-    $imgFs = __DIR__ . '/images/' . $base;
-    if (is_file($imgFs)) return asset('images/' . rawurlencode($base));
+  if (defined('UPLOAD_DIR')) {
+      $upFs = rtrim(UPLOAD_DIR, '/\\') . '/' . $base;
+      if (is_file($upFs)) {
 
-    return asset('images/logotip.jpg');
+          return asset('images/' . rawurlencode($base));
+      }
+  }
+
+  $imgFs = __DIR__ . '/images/' . $base;
+  if (is_file($imgFs)) {
+      return asset('images/' . rawurlencode($base));
+  }
+
+
+  return $usePlaceholder ? asset('images/logotip.jpg') : '';
 }
 
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name")->fetchAll();
