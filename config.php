@@ -71,21 +71,14 @@ function asset(string $rel): string {
     return PUBLIC_BASE . '/' . ltrim($rel, '/');
 }
 
+
 $uploadsFs = getenv('UPLOADS_DIR')
     ?: (getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/uploads'));
-
 if (!is_dir($uploadsFs)) { @mkdir($uploadsFs, 0775, true); }
-
-if (getenv('RENDER')) {
-    $link = __DIR__ . '/public/uploads';
-    if (!is_dir($link) && !is_link($link)) {
-        @mkdir(dirname($link), 0775, true);
-        @symlink('/data/uploads', $link);
-    }
-}
-
 define('UPLOAD_DIR', rtrim($uploadsFs, '/\\') . '/');
-define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/uploads', '/') . '/');
+
+
+define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/images', '/') . '/');
 
 /* ------------------ CONSTANTS ------------------ */
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);
