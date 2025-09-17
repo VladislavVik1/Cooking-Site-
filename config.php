@@ -2,6 +2,7 @@
 
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 
+/* ------------------ DB CONNECTION ------------------ */
 $dsn  = '';
 $user = '';
 $pass = '';
@@ -48,6 +49,7 @@ try {
     exit('Ошибка подключения к базе данных.');
 }
 
+/* ------------------ HELPERS ------------------ */
 if (!function_exists('safe')) {
     function safe($value) {
         return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -55,6 +57,11 @@ if (!function_exists('safe')) {
 }
 function h(string $v): string { return safe($v); }
 
+/**
+ * Определяем базу для ассетов.
+ * Если web-root = корень проекта, в URL нужен префикс /public.
+ * Если web-root = папка public, префикс не нужен.
+ */
 $projectRoot = realpath(__DIR__);
 $docroot     = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
 $needsPublic = ($projectRoot && $docroot && $docroot === $projectRoot);
@@ -64,27 +71,30 @@ function asset(string $rel): string {
     return PUBLIC_BASE . '/' . ltrim($rel, '/');
 }
 
-
+/* ------------------ UPLOADS (persist) ------------------
+ * Статика лежит в public/images (из репозитория) — её НЕ трогаем и не линкуем.
+ * Загрузки пользователей храним в /var/data/uploads (Render) и линкуем на public/uploads.
+ */
 $uploadsFs = getenv('UPLOADS_DIR')
-    ?: (getenv('RENDER') ? '/var/data/images' : (__DIR__ . '/public/images'));
+    ?: (getenv('RENDER') ? '/var/data/uploads' : (__DIR__ . '/public/uploads'));
 
 if (!is_dir($uploadsFs)) { @mkdir($uploadsFs, 0775, true); }
 
 if (getenv('RENDER')) {
-    $link = __DIR__ . '/public/images';
+    $link = __DIR__ . '/public/uploads';
     if (!is_dir($link) && !is_link($link)) {
         @mkdir(dirname($link), 0775, true);
-        @symlink('/var/data/images', $link);
+        @symlink('/var/data/uploads', $link);
     }
 }
 define('UPLOAD_DIR', rtrim($uploadsFs, '/\\') . '/');
-define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/images', '/') . '/');
+define('PUBLIC_UPLOAD_PATH', rtrim(PUBLIC_BASE . '/uploads', '/') . '/');
 
-
+/* ------------------ CONSTANTS ------------------ */
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 $allowed_types = ['image/jpeg','image/png','image/gif','image/webp'];
 
-
+/* ------------------ MISC HELPERS ------------------ */
 function getYouTubeId(string $url): string {
     $id = '';
     $parts = parse_url($url);
@@ -130,6 +140,7 @@ function http_json_get(string $url, array $headers = [], int $timeout = 15): ?ar
     return null;
 }
 
+/* ------------------ UPLOAD FUNCTIONS ------------------ */
 function uploadImage(array $file): array {
     global $allowed_types;
 

@@ -1,27 +1,30 @@
 <?php
-// Отдаём статику напрямую при запуске через встроенный сервер PHP (Render)
+
 if (PHP_SAPI === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '';
     $full = realpath(__DIR__ . $path);
     if ($full && is_file($full)) {
-        return false;
+        return false; 
     }
 }
 
 require_once __DIR__ . '/../config.php';
 
-/** Fallback-URL для изображений рецептов */
 function recipe_img_src($name): string {
     $name = trim((string)$name);
-    if ($name === '') return asset('images/logotip.jpg');          // плейсхолдер
-    if (preg_match('~^https?://~i', $name)) return $name;          // внешний URL
+    if ($name === '') return asset('images/logotip.jpg');           
+    if (preg_match('~^https?://~i', $name)) return $name;           
     $base = basename($name);
-    $fs   = __DIR__ . '/images/' . $base;                          // public/images/*
-    if (is_file($fs)) return asset('images/' . rawurlencode($base));
-    return asset('images/logotip.jpg');                            // плейсхолдер
+
+    $upFs = __DIR__ . '/uploads/' . $base;
+    if (is_file($upFs)) return asset('uploads/' . rawurlencode($base));
+
+    $imgFs = __DIR__ . '/images/' . $base;
+    if (is_file($imgFs)) return asset('images/' . rawurlencode($base));
+
+    return asset('images/logotip.jpg');
 }
 
-// --- Данные ---
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name")->fetchAll();
 
 $search_q_raw = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -114,10 +117,10 @@ include __DIR__ . '/../partials/head.php';
   </div>
   <div class="hero-image">
     <div class="floating-image">
-      <img src="<?= asset('/images/dish1.jpg') ?>" alt="Блюдо 1">
-      <img src="<?= asset('/public/images/dish2.jpg') ?>" alt="Блюдо 2">
-      <img src="<?= asset('/public/images/dish3.jpg') ?>" alt="Блюдо 3">
-      <img src="<?= asset('/public/images/dish4.jpg') ?>" alt="Блюдо 4">
+      <img src="<?= asset('images/dish1.jpg') ?>" alt="Блюдо 1">
+      <img src="<?= asset('images/dish2.jpg') ?>" alt="Блюдо 2">
+      <img src="<?= asset('images/dish3.jpg') ?>" alt="Блюдо 3">
+      <img src="<?= asset('images/dish4.jpg') ?>" alt="Блюдо 4">
     </div>
   </div>
 </section>
@@ -225,7 +228,7 @@ include __DIR__ . '/../partials/head.php';
         </div>
       </div>
       <div class="about-image">
-        <img src="<?= asset('/public/images/logotip.jpg') ?>" alt="О нас">
+        <img src="<?= asset('images/logotip.jpg') ?>" alt="О нас">
       </div>
     </div>
   </div>
