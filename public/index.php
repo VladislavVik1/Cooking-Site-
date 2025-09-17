@@ -225,7 +225,7 @@ include __DIR__ . '/../partials/head.php';
         </div>
       </div>
       <div class="about-image">
-        <img src="<?= asset('images/logotip.jpg') ?>" alt="О нас">
+        <img src="<?= asset('/images/logotip.jpg') ?>" alt="О нас">
       </div>
     </div>
   </div>
