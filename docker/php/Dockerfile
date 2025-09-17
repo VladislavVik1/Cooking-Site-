@@ -1,20 +1,27 @@
-FROM php:8.2-fpm
+# ./Dockerfile
+FROM php:8.2-apache
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      nginx-light supervisor gettext-base ca-certificates \
-      libpq-dev git unzip libcurl4-openssl-dev \
-  && docker-php-ext-install pdo_pgsql pgsql \
-  && docker-php-ext-enable opcache \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql \
+    && a2enmod rewrite headers \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY . /app
 
-RUN mkdir -p /usr/local/etc/php/conf.d /etc/nginx/conf.d /run/nginx
-COPY docker/nginx/default.conf.template /etc/nginx/conf.d/default.conf.template
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf \
+ && sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 
-EXPOSE 10000
-ENTRYPOINT ["/../entrypoint.sh"]
+
+ENV APACHE_LISTEN_PORT=8080
+RUN sed -ri 's!Listen 80!Listen ${APACHE_LISTEN_PORT}!' /etc/apache2/ports.conf
+
+WORKDIR /var/www/html
+COPY . /var/www/html
+
+
+RUN mkdir -p /var/data/uploads && ln -sf /var/data/uploads /var/www/html/public/uploads
+
+EXPOSE 8080
+CMD ["bash","-lc","sed -ri 's!<VirtualHost \\*:8080>!<VirtualHost *:${PORT:-8080}>!' /etc/apache2/sites-available/000-default.conf; \
+                  sed -ri 's!Listen 8080!Listen ${PORT:-8080}!' /etc/apache2/ports.conf; \
+                  exec apache2-foreground"]
