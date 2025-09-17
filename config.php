@@ -75,7 +75,6 @@ if (!function_exists('safe')) {
         return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
-function h(string $v): string { return safe($v); }
 
 function uploadImage(array $file): array {
     global $allowed_types;
