@@ -1,19 +1,36 @@
 <?php
+// Отдаём статику напрямую при запуске через встроенный сервер PHP (Render)
+if (PHP_SAPI === 'cli-server') {
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '';
+    $full = realpath(__DIR__ . $path);
+    if ($full && is_file($full)) {
+        return false;
+    }
+}
+
 require_once __DIR__ . '/../config.php';
 
+/** Fallback-URL для изображений рецептов */
+function recipe_img_src($name): string {
+    $name = trim((string)$name);
+    if ($name === '') return asset('images/logotip.jpg');          // плейсхолдер
+    if (preg_match('~^https?://~i', $name)) return $name;          // внешний URL
+    $base = basename($name);
+    $fs   = __DIR__ . '/images/' . $base;                          // public/images/*
+    if (is_file($fs)) return asset('images/' . rawurlencode($base));
+    return asset('images/logotip.jpg');                            // плейсхолдер
+}
 
+// --- Данные ---
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name")->fetchAll();
 
-
 $search_q_raw = isset($_GET['search']) ? trim($_GET['search']) : '';
-$search_value = safe($search_q_raw); 
+$search_value = safe($search_q_raw);
 $category_id  = (isset($_GET['category']) && $_GET['category'] !== '') ? (int)$_GET['category'] : null;
-
 
 $norm = mb_strtolower(str_replace('ё','е',$search_q_raw), 'UTF-8');
 $norm = preg_replace('~[-–—]+~u', ' ', $norm);
 $tokens_raw = preg_split('/[\s,.;:!?\(\)"]+/u', $norm, -1, PREG_SPLIT_NO_EMPTY);
-
 
 $stop = ['и','в','во','на','с','со','по','из','для','к','от','до','за','о','об','при','без','над','под','у','ли','или','та','же'];
 $suffixes = [
@@ -32,7 +49,6 @@ foreach ($tokens_raw as $w) {
     }
     if ($w !== '' && !in_array($w, $tokens, true)) $tokens[] = $w;
 }
-
 
 $recipes = [];
 $filtersUsed = ($category_id !== null || $search_q_raw !== '');
@@ -77,7 +93,6 @@ if ($filtersUsed) {
     $stmt->execute($params);
     $recipes = $stmt->fetchAll();
 } else {
-
     $stmt = $pdo->query("
         SELECT r.*, c.name AS category_name
         FROM recipes r
@@ -92,19 +107,19 @@ $page_title = 'Вкусные рецепты';
 include __DIR__ . '/../partials/head.php';
 ?>
 <section class="hero">
-    <div class="hero-content">
-        <h1 class="hero-title">Откройте мир вкусной кухни</h1>
-        <p class="hero-description">Найдите идеальные рецепты для любого случая</p>
-        <a href="#recipes" class="hero-btn">Начать готовить</a>
-    </div>
-    <div class="hero-image">
+  <div class="hero-content">
+    <h1 class="hero-title">Откройте мир вкусной кухни</h1>
+    <p class="hero-description">Найдите идеальные рецепты для любого случая</p>
+    <a href="#recipes" class="hero-btn">Начать готовить</a>
+  </div>
+  <div class="hero-image">
     <div class="floating-image">
-  <img src="<?= asset('images/dish1.jpg') ?>" alt="Блюдо 1">
-  <img src="<?= asset('images/dish2.jpg') ?>" alt="Блюдо 2">
-  <img src="<?= asset('images/dish3.jpg') ?>" alt="Блюдо 3">
-  <img src="<?= asset('images/dish4.jpg') ?>" alt="Блюдо 4">
-</div>
+      <img src="<?= asset('images/dish1.jpg') ?>" alt="Блюдо 1">
+      <img src="<?= asset('images/dish2.jpg') ?>" alt="Блюдо 2">
+      <img src="<?= asset('images/dish3.jpg') ?>" alt="Блюдо 3">
+      <img src="<?= asset('images/dish4.jpg') ?>" alt="Блюдо 4">
     </div>
+  </div>
 </section>
 
 <section class="search-section">
@@ -139,9 +154,7 @@ include __DIR__ . '/../partials/head.php';
         <?php foreach ($recipes as $recipe): ?>
           <div class="recipe-card">
             <div class="recipe-image">
-              <!-- карточка рецепта -->
-<img src="<?= asset('images/' . safe($recipe['image_path'])) ?>" alt="<?= safe($recipe['title']) ?>">
-
+              <img src="<?= recipe_img_src($recipe['image_path'] ?? '') ?>" alt="<?= safe($recipe['title']) ?>">
               <div class="recipe-category"><?= safe($recipe['category_name'] ?? 'Без категории') ?></div>
               <div class="recipe-difficulty"><?= safe($recipe['difficulty']) ?></div>
             </div>
@@ -212,12 +225,11 @@ include __DIR__ . '/../partials/head.php';
         </div>
       </div>
       <div class="about-image">
-<img src="<?= asset('images/logotip.jpg') ?>" alt="О нас">
-</div>
+        <img src="<?= asset('images/logotip.jpg') ?>" alt="О нас">
+      </div>
     </div>
   </div>
 </section>
-
 
 <div class="modal" id="recipeModal">
   <div class="modal-content">
