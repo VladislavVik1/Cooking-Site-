@@ -1,27 +1,23 @@
-# Cooking-Site-
-Современный сайт с рецептами на PHP 8.2 + Nginx + PostgreSQL. Поиск по рецептам (ILIKE), категории, модальные карточки, адаптивный интерфейс и загрузка изображений. Готов к деплою через Docker Compose; init-скрипты БД в /db, прод-конфиг для Traefik/HTTPS.
+Современный сайт с рецептами на PHP 8.2 + Nginx + PostgreSQL. Поиск (ILIKE), категории, модальные карточки рецептов, адаптивный интерфейс и загрузка изображений. Проект готов к запуску в Docker (Compose) с авто-инициализацией БД и к деплою в прод (Traefik/HTTPS или Render).
+EN: Modern recipe website built with PHP 8.2, Nginx, and PostgreSQL. ILIKE-based search, categories, modal recipe view, responsive UI, and image uploads. Docker-first (Compose) with automatic DB initialization and production-ready deployment options (Traefik/HTTPS or Render).
 
 О проекте
 
-Сайт рецептов на PHP 8.2 + Nginx + PostgreSQL. Поддерживает поиск (ILIKE), категории, модальные карточки рецепта, адаптивный интерфейс и загрузку изображений. Собран для запуска в Docker, с автоматической инициализацией БД.
+Поиск по названию/описанию/ингредиентам (ILIKE, лёгкая токенизация).
 
-Возможности
+Категории, сортировка по дате.
 
-Поиск по названию/описанию/ингредиентам (ILIKE, токенизация).
+Модалка с деталями рецепта и структурированными ингредиентами (recipe_ingredients).
 
-Категории рецептов, сортировка по дате.
+Загрузка изображений в public/images/.
 
-Модалка с деталями рецепта и списком ингредиентов (таблица recipe_ingredients).
+Безопасное экранирование (safe()), PDO с подготовленными выражениями.
 
-Загрузка изображений на сервер.
-
-Безопасное экранирование HTML (safe()), PDO с подготовленными запросами.
-
-Готовые Docker-сервисы: db, php, web (+ опционально adminer).
+Сервисы Docker: db (PostgreSQL), php (PHP-FPM), web (Nginx) и опционально adminer.
 
 Технологический стек
 
-PHP-FPM 8.2 (расширения: pdo_pgsql, pgsql, mbstring, curl, opcache)
+PHP-FPM 8.2: pdo_pgsql, pgsql, mbstring, curl, opcache
 
 Nginx (root: /var/www/html/public)
 
@@ -31,83 +27,124 @@ Docker Compose
 
 Структура проекта
 project/
-├─ db/                        # SQL-инициализация БД (выполняется при первом старте тома)
+├─ db/                        # SQL-инициализация БД (выполняется при первом старте пустого тома)
 │  └─ schema.sql
 ├─ docker/
 │  ├─ nginx/
-│  │  └─ default.conf         # конфиг nginx (root -> /public)
+│  │  └─ default.conf         # конфиг Nginx (root -> /public)
 │  └─ php/
 │     ├─ Dockerfile
 │     └─ php.ini
-├─ partials/                  # хедер/футер
-├─ public/                    # корневая папка сайта (доступна из браузера)
+├─ partials/                  # header/footer
+├─ public/                    # корень сайта (доступен из браузера)
 │  ├─ index.php
 │  ├─ get_recipe.php
 │  ├─ style.css, script.js
-│  └─ images/                 # сюда сохраняются загружаемые изображения
+│  └─ images/                 # загружаемые изображения
 ├─ config.php                 # подключение БД, загрузки, утилиты
-├─ .env                       # переменные окружения (не коммитить!)
+├─ .env                       # переменные окружения (не коммитить)
 └─ docker-compose.yml
 
-Быстрый старт (локально)
+Запуск локально (Docker)
 1) Предусловия
 
-Установлены Docker и Docker Compose.
+Установлены Docker Desktop и Docker Compose.
 
-Свободен порт 80 (или измените публикацию порта в compose).
+Свободен порт 80 (или поменяйте публикацию порта в docker-compose.yml).
 
-2) Настройте .env
+2) Создайте .env
 APP_ENV=prod
 DB_NAME=cooking_site
-DB_USER=
-DB_PASS=
+DB_USER=Admin
+DB_PASS=12345ttt
 
-3) Запуск
+3) Запустите
 docker compose up -d --build
 
 
 Сайт: http://localhost
 
-(опционально) Админер: http://localhost:8081
+(опционально) Adminer: http://localhost:8081
 
-Инициализация БД (db/schema.sql) выполнится только при первом старте пустого тома db_data.
+Инициализация БД (db/schema.sql) выполнится однократно, при первом создании пустого тома db_data.
 
-4) Проверка соединения PHP → Postgres (опционально)
+4) Проверка коннекта PHP → Postgres (опционально)
 docker compose exec php php -r '$pdo=new PDO(getenv("DB_DSN"),getenv("DB_USER"),getenv("DB_PASS")); echo "OK ".$pdo->query("select now()")->fetchColumn();'
 
 5) Полезные команды
 docker compose ps
+docker compose logs -f db
 docker compose logs -f web
 docker compose logs -f php
-docker compose logs -f db
 docker compose exec web nginx -t && docker compose exec web nginx -s reload
-docker compose down -v   # стоп и удаление томов (сотрёт БД!)
+docker compose down -v   # остановка и удаление томов (сотрёт БД!)
 
-Ключевые файлы и настройки
-Nginx (docker/nginx/default.conf)
+Запуск без Docker (Windows/macOS/Linux)
+0) Установите
 
-root: /var/www/html/public
+PHP 8.2+ (добавьте php в PATH).
 
-Красивые URL:
+PostgreSQL 16/17 (pgAdmin или psql).
 
-location / { try_files $uri $uri/ /index.php?$query_string; }
+1) Создайте БД и пользователя (один раз)
+
+Через psql:
+
+psql -U postgres -c 'CREATE ROLE "Admin" LOGIN PASSWORD '\''12345ttt'\'';'
+psql -U postgres -c 'CREATE DATABASE cooking_site OWNER "Admin";'
+psql -U Admin -d cooking_site -f db/schema.sql
 
 
-Проксирование PHP:
+Либо выполните db/schema.sql целиком через pgAdmin. Убедитесь, что расширение citext доступно.
 
-location ~ \.php$ {
-  include fastcgi_params;
-  fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-  fastcgi_pass php:9000;
+2) Проверьте config.php
+
+Для локального запуска без Docker укажите классический хост:
+
+$host     = '127.0.0.1';
+$port     = 5432;
+$dbname   = 'cooking_site';
+$user     = 'Admin';
+$password = '12345ttt';
+
+3) Поднимите встроенный сервер PHP
+
+Из корня проекта:
+
+php -S 127.0.0.1:8000 -t public
+
+
+Откройте: http://127.0.0.1:8000
+
+(Если порт занят — замените 8000 на свободный.)
+
+Ключевые настройки
+docker/nginx/default.conf
+server {
+  listen 80;
+  server_name _;
+
+  root /var/www/html/public;
+  index index.php index.html;
+
+  location / {
+    try_files $uri $uri/ /index.php?$query_string;
+  }
+
+  location ~ \.php$ {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    fastcgi_pass php:9000;
+  }
+
+  client_max_body_size 25m;
+  sendfile on;
 }
 
 
-Рекомендации: запрет скрытых файлов, кэш статики, try_files $fastcgi_script_name =404;.
+Рекомендации продакшн-хардена: запрет скрытых файлов, кэш статики, try_files $fastcgi_script_name =404;.
 
-PHP (docker/php/Dockerfile)
-
-Убедитесь, что ставятся нужные расширения:
-
+docker/php/Dockerfile (фрагмент)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libpq-dev git unzip libcurl4-openssl-dev \
   && docker-php-ext-install pdo_pgsql pgsql mbstring curl \
@@ -116,93 +153,90 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 config.php
 
-Читает DSN/креды из ENV (или собирает по умолчанию).
+Читает DSN/креды из переменных окружения (для Docker), есть локальные фолбэки.
 
-UPLOAD_DIR указывает на __DIR__ . '/public/images/' — чтобы файлы были доступны по вебу.
+UPLOAD_DIR указывает на __DIR__ . '/public/images/' (файлы доступны по вебу).
 
-Хуки (операционные)
+Хуки/операция
 
-Healthcheck БД — в docker-compose.yml (pg_isready), сервис php ждёт service_healthy.
+Healthcheck БД в docker-compose.yml (pg_isready) — php ждёт service_healthy.
 
-Инициализация БД — папка db/ монтируется в /docker-entrypoint-initdb.d (выполняется при создании кластера).
+Авто-инициализация БД — db/schema.sql применяется при создании пустого тома.
 
-Опкеш PHP — включён в php.ini (ускорение FPM).
+OPcache включён в php.ini для ускорения PHP-FPM.
 
-Статика — кладите CSS/JS/изображения в public/ и используйте абсолютные пути (/style.css, /images/...).
+Статика — храните CSS/JS/изображения в public/, используйте абсолютные пути: /style.css, /images/....
 
-Продакшн деплой (VPS + Docker Compose + HTTPS)
-Вариант 1: через Traefik (авто-HTTPS)
+Продакшн-деплой (VPS/Cloud)
+Вариант A: Traefik (авто-HTTPS)
 
-Настройте DNS для домена (A-запись на IP VPS).
+Настройте DNS (A-запись на IP сервера).
 
-Добавьте traefik и лейблы к web в docker-compose.prod.yml (вынесите порты наружу только у Traefik).
+Добавьте сервис traefik и лейблы к web в docker-compose.prod.yml (наружу порты открывает только Traefik).
 
-Запустите:
+Запуск:
 
 docker compose -f docker-compose.prod.yml up -d --build
 
 
-Traefik выпишет сертификаты Let’s Encrypt автоматически.
+Сертификаты Let’s Encrypt выдаются автоматически.
 
-Вариант 2: Render.com
+Вариант B: Render.com
 
-Соберите единый образ (Nginx + PHP-FPM через supervisord), настройте переменную DATABASE_URL.
+Соберите единый контейнер (Nginx + PHP-FPM под supervisord), используйте DATABASE_URL.
 
-Используйте render.yaml (Blueprint) для веб-сервиса и управляемого Postgres.
+Описывайте инфраструктуру через render.yaml (web-service + managed Postgres).
 
-Важно: постоянное хранилище для public/images — подключите Persistent Disk или S3.
+Важно: для public/images подключите Persistent Disk или S3-совместимое хранилище.
 
-Тонкости загрузки файлов
+Загрузка файлов
 
-Локально (compose) изображения сохраняются в bind-маунт → не пропадают.
-В облаке с бессостоячными контейнерами используйте диск/облако (например, S3).
+Локально (Compose) — сохраняются в bind-mount, данные не теряются.
 
-Частые проблемы и решения
+В облаке — используйте диск/S3: ephemeral-контейнеры теряют файловую систему при деплое.
+
+Частые проблемы
 
 CSS/JS не грузятся — файл не в public/ или относительный путь. Используйте /style.css, /script.js, /images/....
 
-404 при переходе из админки — ссылка на public/index.php. Должно быть / или /index.php.
+404 из админки — ссылка ведёт на public/index.php. Должно быть / или /index.php.
 
-Нет коннекта к БД — проверьте DB_* в php (docker compose exec php env | grep DB_), логи db.
+Нет коннекта к БД — проверьте DB_* в контейнере php, логи db.
 
-Порт 80 занят — временно меняйте на "8080:80" и открывайте http://localhost:8080.
+Порт 80 занят — временно смените маппинг на "8080:80" и откройте http://localhost:8080.
 
 Лицензия
 
-Добавьте файл LICENSE по вашему выбору (MIT/Apache-2.0/GPL-3.0 и т.д.).
+Добавьте файл LICENSE по вашему выбору (MIT/Apache-2.0/GPL-3.0 и т.п.).
 
 🇬🇧 English Version
 About
 
-Recipe website powered by PHP 8.2, Nginx, and PostgreSQL. It features ILIKE-based search, categories, modal recipe view, responsive UI, and image uploads. Docker-first setup with automatic DB initialization.
+Search across title/description/ingredients (ILIKE + light tokenization).
 
-Features
-
-Full-text–like search (ILIKE with tokenization) across title/description/ingredients.
-
-Categories, newest-first ordering.
+Categories, newest-first sorting.
 
 Modal recipe details with structured ingredients (recipe_ingredients).
 
-Image uploads stored under public/images.
+Image uploads into public/images/.
 
-Secure output escaping (safe()), PDO prepared statements.
+Safe HTML escaping (safe()), PDO prepared statements.
 
-Ready-made Docker services: db, php, web (+ optional adminer).
+Docker services: db (Postgres), php (PHP-FPM), web (Nginx), optional adminer.
 
 Tech Stack
 
-PHP-FPM 8.2 (pdo_pgsql, pgsql, mbstring, curl, opcache)
+PHP-FPM 8.2: pdo_pgsql, pgsql, mbstring, curl, opcache
 
 Nginx (root: /var/www/html/public)
 
-PostgreSQL 17 (init from ./db/schema.sql)
+PostgreSQL 17 (init via ./db/schema.sql)
 
 Docker Compose
 
 Project Structure
 project/
-├─ db/                        # DB init (runs on first empty volume creation)
+├─ db/
 │  └─ schema.sql
 ├─ docker/
 │  ├─ nginx/
@@ -211,29 +245,29 @@ project/
 │     ├─ Dockerfile
 │     └─ php.ini
 ├─ partials/
-├─ public/                    # web root
+├─ public/
 │  ├─ index.php
 │  ├─ get_recipe.php
 │  ├─ style.css, script.js
-│  └─ images/                 # uploaded media
+│  └─ images/
 ├─ config.php
 ├─ .env
 └─ docker-compose.yml
 
-Quick Start (local)
+Run Locally (Docker)
 1) Prereqs
 
-Docker and Docker Compose installed.
+Docker Desktop and Docker Compose installed.
 
-Port 80 available (or change the mapping).
+Port 80 available (or change the mapping in compose).
 
 2) .env
 APP_ENV=prod
 DB_NAME=cooking_site
 DB_USER=Admin
-DB_PASS=strong_password
+DB_PASS=12345ttt
 
-3) Run
+3) Start
 docker compose up -d --build
 
 
@@ -241,102 +275,93 @@ App: http://localhost
 
 (optional) Adminer: http://localhost:8081
 
-DB init (db/schema.sql) runs only once when the db_data volume is created.
+DB init (db/schema.sql) runs once when the db_data volume is first created.
 
-4) Connectivity test (optional)
+4) Connectivity check (optional)
 docker compose exec php php -r '$pdo=new PDO(getenv("DB_DSN"),getenv("DB_USER"),getenv("DB_PASS")); echo "OK ".$pdo->query("select now()")->fetchColumn();'
 
-5) Useful commands
+5) Handy commands
 docker compose ps
+docker compose logs -f db
 docker compose logs -f web
 docker compose logs -f php
-docker compose logs -f db
 docker compose exec web nginx -t && docker compose exec web nginx -s reload
-docker compose down -v   # stop & remove volumes (wipes DB!)
+docker compose down -v   # stop & remove volumes (wipes the DB)
 
-Key Files & Settings
-Nginx (docker/nginx/default.conf)
+Run Without Docker
+0) Install
 
-root: /var/www/html/public
+PHP 8.2+
 
-Pretty URLs:
+PostgreSQL 16/17
 
-location / { try_files $uri $uri/ /index.php?$query_string; }
+1) Create DB & user (once)
+psql -U postgres -c 'CREATE ROLE "Admin" LOGIN PASSWORD '\''12345ttt'\'';'
+psql -U postgres -c 'CREATE DATABASE cooking_site OWNER "Admin";'
+psql -U Admin -d cooking_site -f db/schema.sql
+
+2) Configure config.php
+$host='127.0.0.1'; $port=5432; $dbname='cooking_site'; $user='Admin'; $password='12345ttt';
+
+3) Start built-in PHP server
+php -S 127.0.0.1:8000 -t public
 
 
-PHP proxy:
+Open http://127.0.0.1:8000
 
-location ~ \.php$ {
-  include fastcgi_params;
-  fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-  fastcgi_pass php:9000;
-}
+Key Settings
+docker/nginx/default.conf
 
+(see Russian section for the full snippet)
 
-Recommended: deny dotfiles, cache static assets, try_files $fastcgi_script_name =404;.
+docker/php/Dockerfile
 
-PHP (docker/php/Dockerfile)
-
-Ensure extensions are installed:
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      libpq-dev git unzip libcurl4-openssl-dev \
-  && docker-php-ext-install pdo_pgsql pgsql mbstring curl \
-  && docker-php-ext-enable opcache \
-  && rm -rf /var/lib/apt/lists/*
+(ensure extensions: pdo_pgsql pgsql mbstring curl, enable opcache)
 
 config.php
 
-Reads DSN/credentials from env (fallbacks included).
+Reads env DSN/creds (Docker) with local fallbacks; UPLOAD_DIR → public/images/.
 
-UPLOAD_DIR points to __DIR__ . '/public/images/' so files are web-served.
+Ops Hooks
 
-Hooks (operational)
+DB healthcheck via pg_isready; php waits for service_healthy.
 
-DB healthcheck in docker-compose.yml (pg_isready), php waits for service_healthy.
+DB init from db/ on first empty volume creation.
 
-DB init from db/ on first run of an empty volume.
+OPcache enabled in php.ini.
 
-PHP opcache enabled in php.ini.
+Static assets live under public/ with absolute URLs (/style.css, /images/...).
 
-Static assets go under public/; use absolute URLs (/style.css, /images/...).
+Production Deployment
+A: Traefik (auto HTTPS)
 
-Production Deploy (VPS + Docker Compose + HTTPS)
-Option 1: Traefik (auto HTTPS)
-
-Configure DNS (A-record to your VPS IP).
-
-Add traefik service and labels to web in docker-compose.prod.yml (only Traefik exposes ports).
-
-Run:
+Configure DNS (A-record → your VPS IP), add Traefik and labels, then:
 
 docker compose -f docker-compose.prod.yml up -d --build
 
+B: Render.com
 
-Traefik will provision Let’s Encrypt certs automatically.
+Single container (Nginx + PHP-FPM via supervisord), use DATABASE_URL.
 
-Option 2: Render.com
+render.yaml provisions web + managed Postgres.
 
-Build a single container (Nginx + PHP-FPM via supervisord), use DATABASE_URL.
-
-render.yaml (Blueprint) provisions a web service + managed Postgres.
-
-Important: use a Persistent Disk or S3 for public/images.
+Use Persistent Disk or S3 for public/images.
 
 File Uploads
 
-Local (compose): uploads persist via bind mount.
-Cloud: use persistent storage (disk/S3) — ephemeral containers lose local files on deploys.
+Local (Compose): persisted via bind mount.
+
+Cloud: use persistent storage (disk/S3) — ephemeral containers lose local FS on deploy.
 
 Troubleshooting
 
-CSS/JS not loading — file not in public/ or relative path. Use /style.css, /script.js, /images/....
+CSS/JS not loading → not under public/ or using relative paths. Use /style.css, /script.js, /images/....
 
-404 from admin — link pointing to public/index.php. Use / or /index.php.
+404 from admin → link points to public/index.php. Use / or /index.php.
 
-DB connect error — verify DB_* in the php container and check db logs.
+DB connect error → verify DB_* in the php container, check db logs.
 
-Port 80 in use — map "8080:80" and open http://localhost:8080.
+Port 80 busy → map "8080:80" and open http://localhost:8080.
 
 License
 
