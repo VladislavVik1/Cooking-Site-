@@ -46,16 +46,15 @@ if (!function_exists('safe')) {
     }
 }
 function h(string $v): string { return safe($v); }
-
 $uploadsDir = getenv('UPLOADS_DIR');
 if (!$uploadsDir) {
     $uploadsDir = getenv('RENDER') ? '/data/uploads' : (__DIR__ . '/public/images');
 }
 define('UPLOAD_DIR', rtrim($uploadsDir, '/\\') . '/');
-define('PUBLIC_UPLOAD_PATH', 'images/');
+define('PUBLIC_UPLOAD_PATH', '/images/');
+
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 $allowed_types = ['image/jpeg','image/png','image/gif','image/webp'];
-
 
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
